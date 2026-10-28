@@ -12,11 +12,12 @@
     --text: #e8e9ec;
     --muted: #8a8f9c;
     --accent: #4f8cff;
-    --heat0: #1c2129;
-    --heat1: #234a2e;
-    --heat2: #3d7a3d;
-    --heat3: #a68a2e;
-    --heat4: #a6472e;
+    --g1: #1f4a2c;
+    --g2: #2b7a41;
+    --g3: #3fae5d;
+    --r1: #8f3a3a;
+    --r2: #bf3b3b;
+    --r3: #e02f2f;
   }
   * { box-sizing: border-box; }
   body {
@@ -52,19 +53,30 @@
     padding: 8px 10px; text-align: center; border-bottom: 1px solid var(--border);
     white-space: nowrap;
   }
-  th { background: var(--panel); font-weight: 600; position: sticky; top: 0; }
+  th { background: var(--panel); font-weight: 600; position: sticky; top: 0; line-height: 1.25; }
+  th .dow { display: block; color: var(--muted); font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.04em; }
   td.name {
     text-align: left; font-weight: 600; background: var(--panel);
     position: sticky; left: 0; border-right: 1px solid var(--border);
   }
   th.name { text-align: left; position: sticky; left: 0; z-index: 2; }
-  .count { border-radius: 6px; padding: 3px 6px; display: inline-block; min-width: 22px; }
+  .count { border-radius: 6px; padding: 3px 6px; display: inline-block; min-width: 26px; color: #fff; }
+  .count.start { box-shadow: 0 0 0 2px #fff; font-weight: 700; }
   .c0 { color: var(--muted); }
-  .c1 { background: var(--heat1); }
-  .c2 { background: var(--heat2); }
-  .c3 { background: var(--heat3); color: #241a00; }
-  .c4 { background: var(--heat4); color: #fff; }
+  .g1 { background: var(--g1); }
+  .g2 { background: var(--g2); }
+  .g3 { background: var(--g3); color: #07200f; }
+  .r1 { background: var(--r1); }
+  .r2 { background: var(--r2); }
+  .r3 { background: var(--r3); }
   .total { font-weight: 700; }
+  td.streak { background: rgba(255, 210, 63, 0.28); }
+  .legend-streak { display: inline-block; border-radius: 4px; padding: 2px 8px; background: rgba(255, 210, 63, 0.28); border: 1px solid rgba(255, 210, 63, 0.5); }
+  .legend {
+    display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
+    font-size: 12px; color: var(--muted); margin-bottom: 12px;
+  }
+  .legend .count { min-width: 0; padding: 2px 8px; font-size: 11px; }
   footer { color: var(--muted); font-size: 12px; margin-top: 18px; line-height: 1.5; }
   a { color: var(--accent); }
 </style>
@@ -77,14 +89,20 @@
   <div class="controls">
     <select id="teamSelect"><option value="">Loading teams…</option></select>
     <select id="daysSelect">
+      <option value="4" selected>4 days</option>
       <option value="7">7 days</option>
-      <option value="10">10 days</option>
-      <option value="14">14 days</option>
     </select>
     <button id="loadBtn">Load</button>
   </div>
 
   <div id="status"></div>
+
+  <div class="legend">
+    <span><span class="count g1">1–15</span> <span class="count g2">16–30</span> <span class="count g3">31–45</span></span>
+    <span><span class="count r1">46–60</span> <span class="count r2">61–75</span> <span class="count r3">76+</span></span>
+    <span><span class="legend-streak">&nbsp;&nbsp;&nbsp;&nbsp;</span> = pitched on consecutive days</span>
+  </div>
+
   <div class="table-scroll">
     <table id="grid" style="display:none;">
       <thead><tr id="headRow"></tr></thead>
@@ -95,8 +113,9 @@
   <footer>
     Source: MLB Stats API (statsapi.mlb.com), fetched directly by your browser — no server involved.
     "Yesterday" and the date window are based on your device's local clock.
-    Doubleheader games on the same date are summed into that date's cell.
+    Doubleheader games on the same date are summed into that date's cell; if either game was a start, the cell is marked as a start.
     An asterisk (*) after a pitcher's name means left-handed.
+    A white outline around a count marks a start. A yellow band marks consecutive days of pitching (hover for the run length).
   </footer>
 </div>
 
@@ -127,10 +146,9 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`;
 }
 
-function prettyDate(dateStr) {
+function parseDateStr(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  const dt = new Date(y, m - 1, d);
-  return dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  return new Date(y, m - 1, d);
 }
 
 async function loadTeams() {
@@ -184,9 +202,9 @@ async function fetchBoxscorePitchCounts(gamePk, teamId) {
 
   const pitcherIds = side.pitchers || [];
   const out = [];
-  for (const pid of pitcherIds) {
+  pitcherIds.forEach((pid, index) => {
     const player = side.players[`ID${pid}`];
-    if (!player) continue;
+    if (!player) return;
     const pitching = player.stats && player.stats.pitching;
     const pitches = pitching ? (pitching.numberOfPitches || 0) : 0;
     if (pitches > 0) {
@@ -194,9 +212,11 @@ async function fetchBoxscorePitchCounts(gamePk, teamId) {
         id: pid,
         name: player.person ? player.person.fullName : `Player ${pid}`,
         pitches,
+        // The boxscore lists pitchers in order of appearance, so the first one is the starter.
+        started: index === 0,
       });
     }
-  }
+  });
   return out;
 }
 
@@ -217,21 +237,31 @@ async function fetchPitchHands(personIds) {
 
 function heatClass(n) {
   if (n <= 0) return 'c0';
-  if (n <= 15) return 'c1';
-  if (n <= 35) return 'c2';
-  if (n <= 60) return 'c3';
-  return 'c4';
+  if (n <= 15) return 'g1';
+  if (n <= 30) return 'g2';
+  if (n <= 45) return 'g3';
+  if (n <= 60) return 'r1';
+  if (n <= 75) return 'r2';
+  return 'r3';
 }
 
-function renderGrid(dates, pitcherTotals, pitcherHands) {
+function renderGrid(dates, pitchers) {
+  // pitchers: { [id]: { name, hand, days: { [date]: { pitches, started } } } }
   els.headRow.innerHTML = '';
   const thName = document.createElement('th');
   thName.className = 'name';
   thName.textContent = 'Pitcher';
   els.headRow.appendChild(thName);
   for (const d of dates) {
+    const dt = parseDateStr(d);
     const th = document.createElement('th');
-    th.textContent = prettyDate(d);
+    const dow = document.createElement('span');
+    dow.className = 'dow';
+    dow.textContent = dt.toLocaleDateString(undefined, { weekday: 'short' });
+    th.appendChild(dow);
+    th.appendChild(document.createTextNode(
+      dt.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
+    ));
     els.headRow.appendChild(th);
   }
   const thTotal = document.createElement('th');
@@ -239,27 +269,44 @@ function renderGrid(dates, pitcherTotals, pitcherHands) {
   els.headRow.appendChild(thTotal);
 
   els.bodyRows.innerHTML = '';
-  const names = Object.keys(pitcherTotals).sort((a, b) => {
-    const totalA = dates.reduce((s, d) => s + (pitcherTotals[a][d] || 0), 0);
-    const totalB = dates.reduce((s, d) => s + (pitcherTotals[b][d] || 0), 0);
-    return totalB - totalA;
-  });
+  const totalFor = id => dates.reduce((s, d) => s + ((pitchers[id].days[d] || {}).pitches || 0), 0);
+  const ids = Object.keys(pitchers).sort((a, b) => totalFor(b) - totalFor(a));
 
-  for (const name of names) {
+  for (const id of ids) {
+    const p = pitchers[id];
     const tr = document.createElement('tr');
     const tdName = document.createElement('td');
     tdName.className = 'name';
-    const isLefty = pitcherHands && pitcherHands[name] === 'L';
-    tdName.textContent = isLefty ? `${name}*` : name;
+    tdName.textContent = p.hand === 'L' ? `${p.name}*` : p.name;
     tr.appendChild(tdName);
+    // Length of the consecutive-day run each date belongs to (0 = didn't pitch)
+    const runLen = new Array(dates.length).fill(0);
+    for (let i = 0; i < dates.length; ) {
+      if (((p.days[dates[i]] || {}).pitches || 0) > 0) {
+        let j = i;
+        while (j < dates.length && ((p.days[dates[j]] || {}).pitches || 0) > 0) j++;
+        for (let k = i; k < j; k++) runLen[k] = j - i;
+        i = j;
+      } else {
+        i++;
+      }
+    }
+
     let total = 0;
-    for (const d of dates) {
-      const n = pitcherTotals[name][d] || 0;
+    for (let di = 0; di < dates.length; di++) {
+      const d = dates[di];
+      const cell = p.days[d];
+      const n = cell ? cell.pitches : 0;
       total += n;
       const td = document.createElement('td');
+      if (runLen[di] >= 2) {
+        td.className = 'streak';
+        td.title = `${runLen[di]} days in a row`;
+      }
       const span = document.createElement('span');
-      span.className = `count ${heatClass(n)}`;
+      span.className = `count ${heatClass(n)}` + (cell && cell.started ? ' start' : '');
       span.textContent = n > 0 ? n : '–';
+      if (cell && cell.started) span.title = 'Start';
       td.appendChild(span);
       tr.appendChild(td);
     }
@@ -269,7 +316,7 @@ function renderGrid(dates, pitcherTotals, pitcherHands) {
     tr.appendChild(tdTotal);
     els.bodyRows.appendChild(tr);
   }
-  els.grid.style.display = names.length ? 'table' : 'none';
+  els.grid.style.display = ids.length ? 'table' : 'none';
 }
 
 async function run() {
@@ -312,27 +359,27 @@ async function run() {
       return;
     }
 
-    const pitcherTotals = {}; // name -> {date: pitches}
-    const nameToId = {}; // name -> personId, for the handedness lookup
+    const pitchers = {}; // personId -> { name, hand, days: { date: { pitches, started } } }
     let done = 0;
     for (const g of games) {
       setStatus(`Loading boxscore ${++done}/${games.length}…`);
-      const pitchers = await fetchBoxscorePitchCounts(g.gamePk, team.id);
-      for (const p of pitchers) {
-        if (!pitcherTotals[p.name]) pitcherTotals[p.name] = {};
-        pitcherTotals[p.name][g.date] = (pitcherTotals[p.name][g.date] || 0) + p.pitches;
-        nameToId[p.name] = p.id;
+      const rows = await fetchBoxscorePitchCounts(g.gamePk, team.id);
+      for (const r of rows) {
+        if (!pitchers[r.id]) pitchers[r.id] = { name: r.name, hand: null, days: {} };
+        const cell = pitchers[r.id].days[g.date] || { pitches: 0, started: false };
+        cell.pitches += r.pitches;
+        cell.started = cell.started || r.started;
+        pitchers[r.id].days[g.date] = cell;
       }
     }
 
     setStatus('Loading handedness…');
-    const idToHand = await fetchPitchHands(Object.values(nameToId));
-    const nameToHand = {};
-    for (const name of Object.keys(nameToId)) {
-      nameToHand[name] = idToHand[nameToId[name]] || null;
+    const hands = await fetchPitchHands(Object.keys(pitchers).map(Number));
+    for (const id of Object.keys(pitchers)) {
+      pitchers[id].hand = hands[id] || null;
     }
 
-    renderGrid(dates, pitcherTotals, nameToHand);
+    renderGrid(dates, pitchers);
     setStatus(`${team.name} — ${games.length} game(s) in this window. * = left-handed`);
   } catch (err) {
     console.error(err);
