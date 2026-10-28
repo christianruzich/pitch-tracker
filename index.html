@@ -13,11 +13,11 @@
     --muted: #8a8f9c;
     --accent: #4f8cff;
     --g1: #1f4a2c;
-    --g2: #2b7a41;
-    --g3: #3fae5d;
-    --r1: #8f3a3a;
-    --r2: #bf3b3b;
-    --r3: #e02f2f;
+    --g2: #3fae5d;
+    --y1: #a68a2e;
+    --y2: #e0b81f;
+    --r1: #b03a3a;
+    --r2: #e02f2f;
   }
   * { box-sizing: border-box; }
   body {
@@ -66,14 +66,14 @@
   .c0 { color: var(--muted); }
   .nofill { background: transparent; }
   .g1 { background: var(--g1); }
-  .g2 { background: var(--g2); }
-  .g3 { background: var(--g3); color: #07200f; }
+  .g2 { background: var(--g2); color: #07200f; }
+  .y1 { background: var(--y1); color: #241a00; }
+  .y2 { background: var(--y2); color: #241a00; }
   .r1 { background: var(--r1); }
   .r2 { background: var(--r2); }
-  .r3 { background: var(--r3); }
   .total { font-weight: 700; }
-  td.streak { background: rgba(255, 210, 63, 0.28); }
-  .legend-streak { display: inline-block; border-radius: 4px; padding: 2px 8px; background: rgba(255, 210, 63, 0.28); border: 1px solid rgba(255, 210, 63, 0.5); }
+  td.streak { background: rgba(79, 140, 255, 0.25); }
+  .legend-streak { display: inline-block; border-radius: 4px; padding: 2px 8px; background: rgba(79, 140, 255, 0.25); border: 1px solid rgba(79, 140, 255, 0.55); }
   .legend {
     display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center;
     font-size: 12px; color: var(--muted); margin-bottom: 12px;
@@ -100,8 +100,9 @@
   <div id="status"></div>
 
   <div class="legend">
-    <span><span class="count g1">1–10</span> <span class="count g2">11–20</span> <span class="count g3">21–30</span></span>
-    <span><span class="count r1">31–40</span> <span class="count r2">41–50</span> <span class="count r3">51+</span></span>
+    <span><span class="count g1">1–10</span> <span class="count g2">11–20</span></span>
+    <span><span class="count y1">21–30</span> <span class="count y2">31–40</span></span>
+    <span><span class="count r1">41–50</span> <span class="count r2">51+</span></span>
     <span><span class="legend-streak">&nbsp;&nbsp;&nbsp;&nbsp;</span> = pitched on consecutive days</span>
   </div>
 
@@ -117,7 +118,7 @@
     "Yesterday" and the date window are based on your device's local clock.
     Doubleheader games on the same date are summed into that date's cell; if either game was a start, the cell is marked as a start.
     An asterisk (*) after a pitcher's name means left-handed.
-    A white outline around a count marks a start; starts over 60 pitches have no color fill. A yellow band marks consecutive days of pitching (hover for the run length).
+    A white outline around a count marks a start; starts over 60 pitches have no color fill. A blue band marks consecutive days of pitching (hover for the run length).
   </footer>
 </div>
 
@@ -241,10 +242,10 @@ function heatClass(n) {
   if (n <= 0) return 'c0';
   if (n <= 10) return 'g1';
   if (n <= 20) return 'g2';
-  if (n <= 30) return 'g3';
-  if (n <= 40) return 'r1';
-  if (n <= 50) return 'r2';
-  return 'r3';
+  if (n <= 30) return 'y1';
+  if (n <= 40) return 'y2';
+  if (n <= 50) return 'r1';
+  return 'r2';
 }
 
 function renderGrid(dates, pitchers) {
